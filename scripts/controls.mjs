@@ -88,7 +88,7 @@ export function registerTokenControls(controls) {
 
   if (isQueueMode && game.user.isGM) {
     const active = isSceneActive();
-    const visible = active || hasPendingSceneStartRequest();
+    const visible = !encounterActive && (active || hasPendingSceneStartRequest());
     tokenControlsTools['rp-scene'] = {
       name: 'rp-scene',
       title: active ? 'raise-my-hand.controls.rp-scene.end' : 'raise-my-hand.controls.rp-scene.start',

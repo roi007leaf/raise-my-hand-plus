@@ -1427,6 +1427,7 @@ export function requestSpotlightOverride(userId) {
  */
 export function requestSceneStart(starterUserId = null) {
   if (game.users.activeGM?.id !== game.userId) return;
+  if (isEncounterActive()) return;
   setGmSceneActive(true);
   if (starterUserId && !game.users.get(starterUserId)?.isGM) {
     getGmQueue().add(starterUserId);
@@ -1455,6 +1456,26 @@ export function requestSceneEnd() {
   const socket = getSocket();
   socket?.executeForEveryone(clearPlayerListIcons);
   broadcastQueueState();
+}
+
+/**
+ * End and clear RP scene state when a Foundry combat starts.
+ * Only the active GM owns authoritative queue state.
+ * @param {Combat} combat - Updated Foundry combat document
+ * @returns {boolean} Whether RP scene state was cleared
+ */
+export function stopRpSceneForCombat(combat) {
+  if (!combat?.started) return false;
+  if (game.users.activeGM?.id !== game.userId) return false;
+
+  const hasRpSceneState = isGmSceneActive()
+    || getGmQueue().length > 0
+    || getGmUrgentUsers().size > 0
+    || Boolean(getGmSpeakerUserId());
+  if (!hasRpSceneState) return false;
+
+  requestSceneEnd();
+  return true;
 }
 
 /**

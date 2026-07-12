@@ -7,7 +7,7 @@ import HandSettingsData from "./data/settings/HandSettingsData.mjs";
 import XCardSettingsData from "./data/settings/XCardSettingsData.mjs";
 import * as handHandlers from "./handlers/hand.mjs";
 import { initSocket, getSocket, getGmQueue, getGmUrgentUsers, getGmSpeakerUserId, setGmSpeakerUserId, setGmSceneActive, broadcastQueueState } from "./socket/socket.mjs";
-import { clearPlayerListIcons, reapplyQueueIndicators, updateCameraQueueBadges, removePlayerListIcon } from "./socket/handlers.mjs";
+import { clearPlayerListIcons, reapplyQueueIndicators, updateCameraQueueBadges, removePlayerListIcon, stopRpSceneForCombat } from "./socket/handlers.mjs";
 import { registerTokenControls, getLowerHandContextOptions } from "./controls.mjs";
 import { registerHandlebarsHelpers } from "./applications/handlebars.mjs";
 import { api } from "./api.mjs";
@@ -31,7 +31,7 @@ Hooks.on("getUserContextOptions", getLowerHandContextOptions); // get the contex
 Hooks.on("getSceneControlButtons", registerTokenControls); // register the token controls
 Hooks.on("clientSettingChanged", clientSettingChanged); // update the controls toolclip when keybindings are changed
 Hooks.on("createCombat", refreshEncounterControls);
-Hooks.on("updateCombat", refreshEncounterControls);
+Hooks.on("updateCombat", handleCombatUpdate);
 Hooks.on("deleteCombat", refreshEncounterControls);
 
 // Queue lifecycle hooks
@@ -48,6 +48,12 @@ function refreshEncounterControls() {
   if (blocked === handControlsBlockedForEncounter) return;
   handControlsBlockedForEncounter = blocked;
   ui.controls?.render?.({ reset: true });
+}
+
+/** Stop RP mode and refresh controls when Foundry combat changes. */
+function handleCombatUpdate(combat) {
+  refreshEncounterControls();
+  stopRpSceneForCombat(combat);
 }
 
 /**

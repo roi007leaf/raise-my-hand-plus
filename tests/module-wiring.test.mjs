@@ -58,7 +58,8 @@ test("encounter lifecycle refreshes scene controls", () => {
   const source = readFileSync("scripts/raise-my-hand.mjs", "utf8");
 
   assert.match(source, /Hooks\.on\("createCombat", refreshEncounterControls\)/);
-  assert.match(source, /Hooks\.on\("updateCombat", refreshEncounterControls\)/);
+  assert.match(source, /Hooks\.on\("updateCombat", handleCombatUpdate\)/);
   assert.match(source, /Hooks\.on\("deleteCombat", refreshEncounterControls\)/);
   assert.match(source, /ui\.controls\?\.render\?\.\(\{ reset: true \}\)/);
+  assert.match(source, /stopRpSceneForCombat\(combat\)/);
 });

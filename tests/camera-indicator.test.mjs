@@ -610,6 +610,58 @@ test("active gm rejects new queue and urgent hands during encounter", () => {
   game.user.isGM = false;
 });
 
+test("starting combat ends rp scene and clears all speaking state", () => {
+  settingsState.enableQueue = true;
+  game.userId = "gm";
+  game.user.id = "gm";
+  game.user.isGM = true;
+  game.users.activeGM.id = "gm";
+  game.combat = null;
+  socketState.getGmQueue().clear();
+  socketState.getGmUrgentUsers().clear();
+  socketState.setGmSpeakerUserId(null);
+  socketState.setGmSceneActive(false);
+
+  handlers.requestQueueJoin("u1");
+  handlers.requestQueueJoin("u2");
+  handlers.requestUrgent("u2");
+  handlers.requestSceneStart();
+  handlers.requestUrgent("u1");
+
+  assert.equal(handlers.stopRpSceneForCombat({ started: false }), false);
+  assert.equal(socketState.isGmSceneActive(), true);
+  assert.equal(handlers.stopRpSceneForCombat({ started: true }), true);
+  assert.equal(socketState.isGmSceneActive(), false);
+  assert.deepEqual(socketState.getGmQueue().getAll(), []);
+  assert.equal(socketState.getGmUrgentUsers().size, 0);
+  assert.equal(socketState.getGmSpeakerUserId(), null);
+
+  game.userId = "u1";
+  game.user.id = "u1";
+  game.user.isGM = false;
+});
+
+test("rp scene cannot start while combat is active", () => {
+  settingsState.enableQueue = true;
+  game.userId = "gm";
+  game.user.id = "gm";
+  game.user.isGM = true;
+  game.users.activeGM.id = "gm";
+  game.combat = { started: true };
+  socketState.getGmQueue().clear();
+  socketState.getGmUrgentUsers().clear();
+  socketState.setGmSpeakerUserId(null);
+  socketState.setGmSceneActive(false);
+
+  handlers.requestSceneStart();
+
+  assert.equal(socketState.isGmSceneActive(), false);
+
+  game.userId = "u1";
+  game.user.id = "u1";
+  game.user.isGM = false;
+});
+
 test("hand settings exposes camera as a notification mode with scope", () => {
   const fields = HandSettingsData.schema.fields;
 
