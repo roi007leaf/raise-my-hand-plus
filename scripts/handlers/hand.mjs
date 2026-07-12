@@ -2,7 +2,8 @@ import { MODULE_ID } from "../raise-my-hand.mjs";
 import { checkAndUpdateTimeout } from "./helpers.mjs";
 import { conditionalExecute, getActiveGmUserIds, getGmQueue, getSocket } from "../socket/socket.mjs";
 import { playSoundWithReplacement } from "./helpers.mjs";
-import { appendPlayerListIcon, appendCameraIndicator, createUiNotification, createHandPopout, removePlayerListIcon, closeHandPopout, lowerHandForUser, trackHandRaised, requestQueueJoin, requestQueueRemove, requestUrgent, requestSpotlightToggle, requestSpotlightDelay, requestSceneStart, requestSceneEnd, isHandRaised, isSceneActive, getSpeakerUserId } from "../socket/handlers.mjs";
+import { isEncounterActive } from "../encounter.mjs";
+import { appendPlayerListIcon, appendCameraIndicator, createUiNotification, createHandPopout, removePlayerListIcon, closeHandPopout, lowerHandForUser, trackHandRaised, requestQueueJoin, requestQueueRemove, requestUrgent, requestSpotlightToggle, requestSpotlightDelay, requestSceneStart, requestSceneEnd, isHandRaised, isSceneActive, isUrgentHandRaised, getSpeakerUserId } from "../socket/handlers.mjs";
 
 const { renderTemplate } = foundry.applications.handlebars;
 
@@ -27,6 +28,14 @@ function lockActiveSpeakerControl() {
  * @returns {void}
  */
 export function toggle(active) {
+  if (active && isEncounterActive()) {
+    const tool = ui.controls?.controls?.["tokens"]?.tools?.["raise-hand"];
+    if (tool?.toggle) tool.active = false;
+    if (tool) tool.title = "raise-my-hand.controls.raise-hand.toggle.false";
+    ui.controls?.render?.();
+    return;
+  }
+
   if (isActiveSceneSpeaker(game.userId)) {
     lockActiveSpeakerControl();
     return;
@@ -48,6 +57,9 @@ export function toggle(active) {
  */
 export function handleRaiseHandKeybinding(tool, event) {
   if (!tool) return false;
+
+  const wouldRaise = !tool.toggle || !tool.active;
+  if (wouldRaise && isEncounterActive()) return true;
 
   if (tool.toggle) {
     if (isActiveSceneSpeaker(game.userId)) {
@@ -72,6 +84,8 @@ export function handleRaiseHandKeybinding(tool, event) {
  * @returns {Promise<void>}
  */
 export async function raise({ skipTimeout = false } = {}) {
+  if (isEncounterActive()) return;
+
   // Check timeout to prevent spam and update timestamp
   if (!skipTimeout && !checkAndUpdateTimeout()) return;
 
@@ -230,6 +244,9 @@ export function lower() {
  */
 export function urgentSpeak(active = null) {
   const id = game.userId;
+  const isLoweringUrgent = active === false || (active === null && isUrgentHandRaised(id));
+  if (isEncounterActive() && !isLoweringUrgent) return;
+
   const socket = getSocket();
   const handSettings = game.settings.get(MODULE_ID, "handSettings");
   const isSceneMode = game.settings.get(MODULE_ID, "enableQueue") && handSettings.general.isToggle;

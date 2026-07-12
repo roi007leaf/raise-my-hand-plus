@@ -443,6 +443,7 @@ const settingsState = {
 const settingWrites = [];
 
 globalThis.game = {
+  combat: null,
   i18n: {
     localize: key => key,
     format: (key, data) => {
@@ -517,6 +518,96 @@ test.beforeEach(() => {
   notificationCalls.length = 0;
   window.eventListeners.clear();
   ui.controls.controls.tokens.tools = {};
+  game.combat = null;
+});
+
+test("active encounter hides hand controls but preserves non-queue x-card", () => {
+  game.combat = { started: true };
+  settingsState.handSettings.general.notificationModes = new Set(["camera"]);
+  settingsState.xCardSettings.isEnabled = true;
+
+  const controls = { tokens: { tools: {} } };
+  controlsModule.registerTokenControls(controls);
+
+  assert.equal(controls.tokens.tools["raise-hand"].visible, false);
+  assert.equal(controls.tokens.tools["show-xcard"].visible, true);
+});
+
+test("active encounter hides queue raise and urgent controls", () => {
+  game.combat = { started: true };
+  settingsState.enableQueue = true;
+
+  const controls = { tokens: { tools: {} } };
+  controlsModule.registerTokenControls(controls);
+
+  assert.equal(controls.tokens.tools["raise-hand"].visible, false);
+  assert.equal(controls.tokens.tools["show-xcard"].visible, false);
+});
+
+test("unstarted encounter also blocks raising hands", () => {
+  game.combat = { started: false };
+
+  const controls = { tokens: { tools: {} } };
+  controlsModule.registerTokenControls(controls);
+
+  assert.equal(controls.tokens.tools["raise-hand"].visible, false);
+});
+
+test("raise action is ignored during an active encounter", async () => {
+  game.combat = { started: true };
+  settingsState.handSettings.general.notificationModes = new Set(["ui"]);
+  settingsState.handSettings.ui = { scope: "all-players", permanent: false };
+  const socketCalls = [];
+  socketlib.registerModule = () => ({
+    register: () => { },
+    executeForAllGMs: (...args) => socketCalls.push(args),
+    executeForEveryone: (...args) => socketCalls.push(args),
+    executeAsUser: (...args) => socketCalls.push(args)
+  });
+  socketState.initSocket();
+
+  await handHandlers.raise({ skipTimeout: true });
+
+  assert.deepEqual(notificationCalls, []);
+  assert.deepEqual(socketCalls, []);
+});
+
+test("toggle and hotkey cannot bypass active encounter gate", () => {
+  game.combat = { started: true };
+  const tool = {
+    toggle: true,
+    active: false,
+    title: "",
+    onChange: () => assert.fail("encounter hotkey must not invoke hand control")
+  };
+  ui.controls.controls.tokens.tools["raise-hand"] = tool;
+
+  handHandlers.toggle(true);
+  const handled = handHandlers.handleRaiseHandKeybinding(tool, { type: "keydown" });
+
+  assert.equal(tool.active, false);
+  assert.equal(handled, true);
+});
+
+test("active gm rejects new queue and urgent hands during encounter", () => {
+  settingsState.enableQueue = true;
+  game.userId = "gm";
+  game.user.id = "gm";
+  game.user.isGM = true;
+  game.users.activeGM.id = "gm";
+  game.combat = { started: true };
+  socketState.getGmQueue().clear();
+  socketState.getGmUrgentUsers().clear();
+
+  handlers.requestQueueJoin("u1");
+  handlers.requestUrgent("u1");
+
+  assert.deepEqual(socketState.getGmQueue().getAll(), []);
+  assert.equal(socketState.getGmUrgentUsers().size, 0);
+
+  game.userId = "u1";
+  game.user.id = "u1";
+  game.user.isGM = false;
 });
 
 test("hand settings exposes camera as a notification mode with scope", () => {

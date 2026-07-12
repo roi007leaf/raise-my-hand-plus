@@ -2,6 +2,7 @@ import { MODULE_ID } from "./module-id.mjs";
 import * as handHandlers from "./handlers/hand.mjs";
 import * as xcardHandlers from "./handlers/xcard.mjs";
 import { getSpeakerUserId, hasPendingSceneStartRequest, isHandRaised, isSceneActive, isUrgentHandRaised } from "./socket/handlers.mjs";
+import { isEncounterActive } from "./encounter.mjs";
 import HandSettingsData from "./data/settings/HandSettingsData.mjs";
 import XCardSettingsData from "./data/settings/XCardSettingsData.mjs";
 import ScopeField from "./data/settings/ScopeField.mjs";
@@ -23,6 +24,7 @@ export function registerTokenControls(controls) {
   const isGmSceneController = isQueueMode && game.user.isGM;
   const isActiveSceneSpeaker = isQueueMode && isSceneActive() && getSpeakerUserId() === game.userId;
   const playerSceneControlsVisible = !isQueueMode || !game.user.isGM;
+  const encounterActive = isEncounterActive();
 
   /**
    * The raise hand control.
@@ -43,6 +45,7 @@ export function registerTokenControls(controls) {
     visible: !isGmSceneController
       && playerSceneControlsVisible
       && !isActiveSceneSpeaker
+      && !encounterActive
       && (handSettings.general.notificationModes.size > 0 || isQueueMode),
     ...(handSettings.general.isToggle
       ? { onChange: (event, active) => handHandlers.toggle(active) }
@@ -72,7 +75,7 @@ export function registerTokenControls(controls) {
     button: !isQueueMode,
     toggle: isQueueMode,
     active: isQueueMode && isUrgentHandRaised(game.userId),
-    visible: isQueueMode ? !game.user.isGM && !isActiveSceneSpeaker : xCardSettings.isEnabled,
+    visible: isQueueMode ? !game.user.isGM && !isActiveSceneSpeaker && !encounterActive : xCardSettings.isEnabled,
     onChange: isQueueMode
       ? (event, active) => handHandlers.urgentSpeak(active)
       : (event, active) => xcardHandlers.showXCardDialog(),

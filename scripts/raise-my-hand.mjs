@@ -11,6 +11,7 @@ import { clearPlayerListIcons, reapplyQueueIndicators, updateCameraQueueBadges, 
 import { registerTokenControls, getLowerHandContextOptions } from "./controls.mjs";
 import { registerHandlebarsHelpers } from "./applications/handlebars.mjs";
 import { api } from "./api.mjs";
+import { isEncounterActive } from "./encounter.mjs";
 
 /**
  * The current settings era version for migration tracking.
@@ -29,12 +30,25 @@ Hooks.once("ready", ready); // perform migration of settings if needed
 Hooks.on("getUserContextOptions", getLowerHandContextOptions); // get the context options for the lower hand keybinding
 Hooks.on("getSceneControlButtons", registerTokenControls); // register the token controls
 Hooks.on("clientSettingChanged", clientSettingChanged); // update the controls toolclip when keybindings are changed
+Hooks.on("createCombat", refreshEncounterControls);
+Hooks.on("updateCombat", refreshEncounterControls);
+Hooks.on("deleteCombat", refreshEncounterControls);
 
 // Queue lifecycle hooks
 Hooks.on("userConnected", onUserConnected);
 Hooks.on("userDisconnected", onUserDisconnected);
 Hooks.on("renderPlayerList", reapplyQueueIndicators);
 Hooks.on("renderCameraViews", updateCameraQueueBadges);
+
+let handControlsBlockedForEncounter = null;
+
+/** Refresh hand controls when encounter availability changes. */
+function refreshEncounterControls() {
+  const blocked = isEncounterActive();
+  if (blocked === handControlsBlockedForEncounter) return;
+  handControlsBlockedForEncounter = blocked;
+  ui.controls?.render?.({ reset: true });
+}
 
 /**
  * Initialize the module.

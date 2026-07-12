@@ -53,3 +53,12 @@ test("socket initialization handles socketlib registration failure", () => {
   assert.match(source, /game\.modules\.get\(MODULE_ID\)/);
   assert.match(source, /return;/);
 });
+
+test("encounter lifecycle refreshes scene controls", () => {
+  const source = readFileSync("scripts/raise-my-hand.mjs", "utf8");
+
+  assert.match(source, /Hooks\.on\("createCombat", refreshEncounterControls\)/);
+  assert.match(source, /Hooks\.on\("updateCombat", refreshEncounterControls\)/);
+  assert.match(source, /Hooks\.on\("deleteCombat", refreshEncounterControls\)/);
+  assert.match(source, /ui\.controls\?\.render\?\.\(\{ reset: true \}\)/);
+});

@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../raise-my-hand.mjs";
+import { isEncounterActive } from "../encounter.mjs";
 import NotificationPopout from "../applications/apps/notification-popout.mjs";
 import { playSoundWithReplacement } from "../handlers/helpers.mjs";
 import { getGmQueue, getGmUrgentUsers, getGmSpeakerUserId, setGmSpeakerUserId, isGmSceneActive, setGmSceneActive, broadcastQueueState, getSocket } from "./socket.mjs";
@@ -1273,6 +1274,7 @@ export function hasPendingSceneStartRequest() {
  */
 export function requestQueueJoin(userId) {
   if (game.users.activeGM?.id !== game.userId) return;
+  if (isEncounterActive()) return;
   const gmQueue = getGmQueue();
   const position = gmQueue.add(userId);
   if (position === -1) return;
@@ -1327,6 +1329,9 @@ export function requestUrgent(userId) {
   if (getGmSpeakerUserId() === userId) return;
   const gmUrgent = getGmUrgentUsers();
   const gmQueue = getGmQueue();
+
+  // Existing urgent hands may still be lowered after an encounter starts.
+  if (isEncounterActive() && !gmUrgent.has(userId)) return;
 
   if (gmUrgent.has(userId)) {
     gmUrgent.delete(userId);
